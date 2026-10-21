@@ -36,7 +36,7 @@ int __pthread_key_create(pthread_key_t *k, void (*dtor)(void *))
 
 	/* This can only happen in the main thread before
 	 * pthread_create has been called. */
-	if (!self->tsd) self->tsd = __pthread_tsd_main;
+	self->tsd = __pthread_tsd_main;
 
 	/* Purely a sentinel value since null means slot is free. */
 	if (!dtor) dtor = nodtor;
@@ -57,48 +57,12 @@ int __pthread_key_create(pthread_key_t *k, void (*dtor)(void *))
 
 int __pthread_key_delete(pthread_key_t k)
 {
-	sigset_t set;
-	pthread_t self = __pthread_self(), td=self;
-
-#ifdef __wasilibc_unmodified_upstream
-	__block_app_sigs(&set);
-#endif
-	__pthread_rwlock_wrlock(&key_lock);
-
-	__tl_lock();
-	do td->tsd[k] = 0;
-	while ((td=td->next)!=self);
-	__tl_unlock();
-
-	keys[k] = 0;
-
-	__pthread_rwlock_unlock(&key_lock);
-#ifdef __wasilibc_unmodified_upstream
-	__restore_sigs(&set);
-#endif
-
+	(void)k;
 	return 0;
 }
 
 void __pthread_tsd_run_dtors()
 {
-	pthread_t self = __pthread_self();
-	int i, j;
-	for (j=0; self->tsd_used && j<PTHREAD_DESTRUCTOR_ITERATIONS; j++) {
-		__pthread_rwlock_rdlock(&key_lock);
-		self->tsd_used = 0;
-		for (i=0; i<PTHREAD_KEYS_MAX; i++) {
-			void *val = self->tsd[i];
-			void (*dtor)(void *) = keys[i];
-			self->tsd[i] = 0;
-			if (val && dtor && dtor != nodtor) {
-				__pthread_rwlock_unlock(&key_lock);
-				dtor(val);
-				__pthread_rwlock_rdlock(&key_lock);
-			}
-		}
-		__pthread_rwlock_unlock(&key_lock);
-	}
 }
 
 weak_alias(__pthread_key_create, pthread_key_create);

@@ -4,6 +4,7 @@
 static void *__pthread_getspecific(pthread_key_t k)
 {
 	struct pthread *self = __pthread_self();
+	self->tsd = __pthread_tsd_main;
 	return self->tsd[k];
 }
 
